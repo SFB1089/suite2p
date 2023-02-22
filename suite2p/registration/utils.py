@@ -10,6 +10,9 @@ from scipy.ndimage import gaussian_filter1d
 import torch
 
 # Tobias Rose 2023: multithreading gaussian_filter1d on AMD Epyc
+# setup instructions for high-speed torchFFT suite2p:
+# https://www.evernote.com/shard/s4/sh/5b256de6-3809-f4f9-5a57-66e793917ecd/fDE86GBXuUEevxbNlxA7BgAfOhWknU9vDmaIN7YbiNZ5yWEFyh67MdeiOw
+
 from concurrent.futures import ThreadPoolExecutor
 def gaussian_filter1d_mt(input_array, sigma, axis=-1, mode='reflect', cval=0.0, n_threads=50):
     """
