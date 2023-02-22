@@ -14,7 +14,7 @@ import torch
 # https://www.evernote.com/shard/s4/sh/5b256de6-3809-f4f9-5a57-66e793917ecd/fDE86GBXuUEevxbNlxA7BgAfOhWknU9vDmaIN7YbiNZ5yWEFyh67MdeiOw
 
 from concurrent.futures import ThreadPoolExecutor
-def gaussian_filter1d_mt(input_array, sigma, axis=-1, mode='reflect', cval=0.0, n_threads=50):
+def gaussian_filter1d_mt(input_array, sigma, axis=-1, mode='reflect', cval=0.0, n_threads=63):
     """
     Apply Gaussian smoothing along a single axis of the input array using multiple threads.
     Parameters:
