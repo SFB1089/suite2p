@@ -9,6 +9,32 @@ from scipy.fft import next_fast_len#, fft2, ifft2
 from scipy.ndimage import gaussian_filter1d
 import torch
 
+# Tobias Rose 2023: multithreading gaussian_filter1d on AMD Epyc
+from concurrent.futures import ThreadPoolExecutor
+def gaussian_filter1d_mt(input_array, sigma, axis=-1, mode='reflect', cval=0.0, n_threads=50):
+    """
+    Apply Gaussian smoothing along a single axis of the input array using multiple threads.
+    Parameters:
+        input_array (numpy.ndarray): The input array to smooth.
+        sigma (float): The standard deviation of the Gaussian kernel.
+        axis (int, optional): The axis along which to apply the filter. Default is -1 (last axis).
+        mode (str, optional): The mode parameter to pass to scipy.ndimage.gaussian_filter1d. Default is 'reflect'.
+        cval (float, optional): The cval parameter to pass to scipy.ndimage.gaussian_filter1d. Default is 0.0.
+        n_threads (int, optional): The number of threads to use. Default is 4.
+    Returns:
+        numpy.ndarray: The smoothed array.
+    """
+    # Split the input array into chunks along the axis we want to filter
+    chunks = np.array_split(input_array, n_threads, axis=axis)
+    # Create a thread pool and submit a filtering task for each chunk
+    with ThreadPoolExecutor(max_workers=n_threads) as executor:
+        tasks = [executor.submit(gaussian_filter1d, chunk, sigma, axis=axis, mode=mode, cval=cval) for chunk in chunks]
+    # Wait for all tasks to complete and collect the filtered chunks
+    filtered_chunks = [task.result() for task in tasks]
+    # Concatenate the filtered chunks back into a single array along the filtering axis
+    return np.concatenate(filtered_chunks, axis=axis)
+
+    #####
 
 try:
     # use mkl_fft if installed
@@ -30,6 +56,7 @@ try:
         convolved_data: nImg x Ly x Lx
         """
         return ifft2(apply_dotnorm(fft2(mov), img)) #.astype(np.complex64)
+        print('using MKLFFT') # Tobias Rose 2023
 except:
     try:
         # pytorch > 1.7
@@ -37,6 +64,7 @@ except:
         from torch.fft import fft2 as torch_fft2
         from torch.fft import ifft as torch_ifft
         from torch.fft import ifft2 as torch_ifft2
+        print('using TorchFFT') # Tobias Rose 2023
     except:
         # pytorch <= 1.7
         raise ImportError('pytorch version > 1.7 required')
@@ -206,7 +234,7 @@ def temporal_smooth(data: np.ndarray, sigma: float) -> np.ndarray:
         Smoothed data
 
     """
-    return gaussian_filter1d(data, sigma=sigma, axis=0)
+    return gaussian_filter1d_mt(data, sigma=sigma, axis=0) # Tobias Rose 2023
 
 
 def spatial_smooth(data: np.ndarray, window: int):
