@@ -14,7 +14,8 @@ import torch
 # https://www.evernote.com/shard/s4/sh/5b256de6-3809-f4f9-5a57-66e793917ecd/fDE86GBXuUEevxbNlxA7BgAfOhWknU9vDmaIN7YbiNZ5yWEFyh67MdeiOw
 
 from concurrent.futures import ThreadPoolExecutor
-def gaussian_filter1d_mt(input_array, sigma, axis=-1, mode='reflect', cval=0.0, n_threads=63):
+
+def gaussian_filter1d_mt(input_array, sigma, axis=-1, mode='reflect', cval=0.0, n_threads=64):
     """
     Apply Gaussian smoothing along a single axis of the input array using multiple threads.
     Parameters:
@@ -29,15 +30,22 @@ def gaussian_filter1d_mt(input_array, sigma, axis=-1, mode='reflect', cval=0.0, 
     """
     # Split the input array into chunks along the axis we want to filter
     chunks = np.array_split(input_array, n_threads, axis=axis)
+
     # Create a thread pool and submit a filtering task for each chunk
     with ThreadPoolExecutor(max_workers=n_threads) as executor:
-        tasks = [executor.submit(gaussian_filter1d, chunk, sigma, axis=axis, mode=mode, cval=cval) for chunk in chunks]
-    # Wait for all tasks to complete and collect the filtered chunks
-    filtered_chunks = [task.result() for task in tasks]
+        tasks = []
+
+        # Submit tasks in the order they appear in the chunks list
+        for chunk in chunks:
+            task = executor.submit(gaussian_filter1d, chunk, sigma, axis=axis, mode=mode, cval=cval)
+            tasks.append(task)
+
+        # Wait for all tasks to complete and collect the filtered chunks in the correct order
+        filtered_chunks = [task.result() for task in tasks]
+
     # Concatenate the filtered chunks back into a single array along the filtering axis
     return np.concatenate(filtered_chunks, axis=axis)
 
-    #####
 
 try:
     # use mkl_fft if installed
